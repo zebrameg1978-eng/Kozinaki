@@ -1,1 +1,596 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Kozinaki Roulette</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
 
+        body {
+            background: linear-gradient(145deg, #0a0f1e 0%, #0c1222 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Основной контейнер */
+        .game-container {
+            max-width: 550px;
+            width: 100%;
+            background: rgba(15, 25, 45, 0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 48px;
+            padding: 20px 18px 30px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,215,0,0.2);
+            transition: all 0.2s;
+        }
+
+        /* Профиль и баланс */
+        .profile-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            background: #010b1a;
+            padding: 12px 20px;
+            border-radius: 60px;
+            margin-bottom: 30px;
+            box-shadow: inset 0 1px 3px #00000030, 0 5px 10px rgba(0,0,0,0.2);
+        }
+
+        .greeting {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #ffdf8c;
+            text-shadow: 0 1px 2px black;
+        }
+
+        .balance-box {
+            background: #00000055;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 1.4rem;
+            color: #f5b642;
+            letter-spacing: 1px;
+        }
+
+        .balance-box span {
+            color: #c7ffb1;
+            font-size: 0.9rem;
+            margin-right: 6px;
+        }
+
+        /* Рулетка */
+        .roulette-wrapper {
+            background: #031024;
+            border-radius: 60px;
+            padding: 15px 10px;
+            margin-bottom: 25px;
+            box-shadow: inset 0 0 12px #00000055, 0 8px 18px black;
+        }
+
+        .wheel-area {
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+
+        canvas {
+            background: #0a1428;
+            border-radius: 50%;
+            box-shadow: 0 0 0 8px #2a2e3f, 0 0 0 12px #101520, 0 15px 35px black;
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        canvas:active { transform: scale(0.98); }
+
+        /* Ставки */
+        .bet-panel {
+            background: #07152b;
+            border-radius: 40px;
+            padding: 18px 15px;
+            margin: 10px 0 20px;
+        }
+
+        .bet-amounts {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .bet-btn {
+            background: #1f2a44;
+            border: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 10px 18px;
+            border-radius: 60px;
+            color: #e9f1ff;
+            cursor: pointer;
+            transition: 0.1s linear;
+            box-shadow: 0 2px 5px black;
+        }
+        .bet-btn.active {
+            background: #f3b33d;
+            color: #1e1a0c;
+            box-shadow: 0 0 12px gold;
+        }
+
+        .spin-btn {
+            background: radial-gradient(circle at 30% 10%, #ffb347, #ff7e05);
+            width: 80%;
+            padding: 14px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 60px;
+            color: white;
+            text-shadow: 0 1px 2px black;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.07s linear;
+            margin-top: 5px;
+            box-shadow: 0 5px 0 #a14300;
+        }
+        .spin-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #a14300; }
+        .spin-btn:disabled {
+            opacity: 0.5;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        .result-area {
+            background: #010713b3;
+            border-radius: 40px;
+            padding: 12px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #ffde9e;
+            margin: 15px 0 10px;
+            min-height: 70px;
+        }
+
+        .auth-section {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        input {
+            background: #0c1a2f;
+            border: 1px solid #ffd966;
+            padding: 10px 15px;
+            border-radius: 60px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            width: 140px;
+        }
+
+        button {
+            background: #2d3e6e;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 60px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        button:active { transform: scale(0.96); }
+
+        .logout-btn {
+            background: #3e2a2f;
+            color: #ffbc9a;
+        }
+
+        hr {
+            border-color: #ffcd7e30;
+            margin: 15px 0;
+        }
+
+        /* Стили для брендинга kozinaki */
+        .brand-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .brand-name {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #FFD700, #FFA500, #FF8C00);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            letter-spacing: 2px;
+        }
+        .brand-sub {
+            font-size: 0.8rem;
+            color: #c9ae6e;
+            margin-top: -8px;
+            letter-spacing: 1px;
+        }
+        .creator-credit {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #7a6a4a;
+            margin-top: 15px;
+            border-top: 1px solid #ffcd7e30;
+            padding-top: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .game-container { padding: 15px; }
+            .bet-btn { padding: 6px 14px; font-size: 1rem; }
+            .brand-name { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container" id="app">
+    <!-- Динамический рендер: либо форма входа, либо игра -->
+    <div id="dynamic-content"></div>
+</div>
+
+<script>
+    // ----- Хранилище пользователей (localStorage) -----
+    const STORAGE_USERS = 'roulette_users';
+    const STORAGE_CURRENT = 'roulette_current_user';
+
+    // Инициализация хранилища
+    function getUsers() {
+        const raw = localStorage.getItem(STORAGE_USERS);
+        if (!raw) return {};
+        try {
+            return JSON.parse(raw);
+        } catch(e) { return {}; }
+    }
+
+    function saveUsers(users) {
+        localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+    }
+
+    function getCurrentUser() {
+        return localStorage.getItem(STORAGE_CURRENT);
+    }
+
+    function setCurrentUser(username) {
+        if (username) localStorage.setItem(STORAGE_CURRENT, username);
+        else localStorage.removeItem(STORAGE_CURRENT);
+    }
+
+    // Регистрация / вход
+    function registerUser(username, password) {
+        const users = getUsers();
+        if (users[username]) return { success: false, error: 'Пользователь уже существует' };
+        if (!username.trim() || !password.trim()) return { success: false, error: 'Логин/пароль не могут быть пустыми' };
+        users[username] = { password: password, balance: 1000 };
+        saveUsers(users);
+        return { success: true };
+    }
+
+    function loginUser(username, password) {
+        const users = getUsers();
+        const user = users[username];
+        if (!user) return { success: false, error: 'Нет такого пользователя' };
+        if (user.password !== password) return { success: false, error: 'Неверный пароль' };
+        setCurrentUser(username);
+        return { success: true, balance: user.balance };
+    }
+
+    function logout() {
+        setCurrentUser(null);
+        renderApp();
+    }
+
+    // Обновление баланса текущего юзера
+    function updateUserBalance(newBalance) {
+        const curr = getCurrentUser();
+        if (!curr) return false;
+        const users = getUsers();
+        if (!users[curr]) return false;
+        users[curr].balance = Math.floor(newBalance);
+        saveUsers(users);
+        return true;
+    }
+
+    function getCurrentBalance() {
+        const curr = getCurrentUser();
+        if (!curr) return null;
+        const users = getUsers();
+        return users[curr]?.balance ?? null;
+    }
+
+    // ---------- РУЛЕТКА ----------
+    // Сектора (европейская стилизация: 12 секторов + числа)
+    const SECTORS = [
+        { name: 'Красное 7',  multiplier: 2,  color: '#e33f3f' },
+        { name: 'Черное 13',  multiplier: 2,  color: '#2c2c2c' },
+        { name: 'Зелёное 0',  multiplier: 14, color: '#2e7d32' },
+        { name: 'Красное 32', multiplier: 2,  color: '#e33f3f' },
+        { name: 'Черное 19',  multiplier: 2,  color: '#2c2c2c' },
+        { name: 'Красное 5',  multiplier: 2,  color: '#e33f3f' },
+        { name: 'Черное 24',  multiplier: 2,  color: '#2c2c2c' },
+        { name: 'Золото x3',  multiplier: 3,  color: '#d4af37' },
+        { name: 'Красное 14', multiplier: 2,  color: '#e33f3f' },
+        { name: 'Черное 31',  multiplier: 2,  color: '#2c2c2c' },
+        { name: 'Бонус х5',   multiplier: 5,  color: '#c97e5a' },
+        { name: 'Черное 20',  multiplier: 2,  color: '#2c2c2c' }
+    ];
+
+    let currentAngle = 0;       // угол вращения в радианах
+    let spinning = false;
+    let animationId = null;
+    let spinStartTime = 0;
+    let spinDuration = 1800;     // ms
+    let finalSectorIndex = -1;
+    let selectedBet = 50;        // ставка по умолчанию
+
+    // DOM элементы будут создаваться динамически
+    let canvas, ctx, spinButton, resultDiv, balanceSpan, betButtons = [];
+
+    // Отрисовка колеса
+    function drawWheel(angleRad) {
+        if (!canvas || !ctx) return;
+        const w = canvas.width, h = canvas.height;
+        const centerX = w/2, centerY = h/2;
+        const radius = w * 0.44;
+        ctx.clearRect(0, 0, w, h);
+        
+        const angleStep = (Math.PI * 2) / SECTORS.length;
+        for (let i = 0; i < SECTORS.length; i++) {
+            const start = i * angleStep + angleRad;
+            const end = start + angleStep;
+            const sector = SECTORS[i];
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, start, end);
+            ctx.fillStyle = sector.color;
+            ctx.fill();
+            ctx.save();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+            // текст
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(start + angleStep/2);
+            ctx.fillStyle = '#FFF9E0';
+            ctx.font = `bold ${Math.max(10, radius * 0.12)}px "Segoe UI"`;
+            ctx.shadowBlur = 0;
+            let shortName = sector.name.length > 10 ? sector.name.slice(0,8)+'..' : sector.name;
+            ctx.fillText(shortName, radius * 0.65, 8);
+            ctx.restore();
+        }
+        // стрелка сверху
+        ctx.beginPath();
+        ctx.moveTo(centerX-12, centerY-radius-8);
+        ctx.lineTo(centerX, centerY-radius-22);
+        ctx.lineTo(centerX+12, centerY-radius-8);
+        ctx.fillStyle = '#FFD966';
+        ctx.fill();
+        ctx.fillStyle = 'black';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText("▼", centerX-6, centerY-radius-10);
+    }
+
+    // Анимация вращения
+    function startSpin(betAmount) {
+        if (spinning) return false;
+        const balance = getCurrentBalance();
+        if (balance === null || balance < betAmount) {
+            resultDiv.innerText = '❌ Недостаточно средств!';
+            return false;
+        }
+        // списываем ставку
+        const newBal = balance - betAmount;
+        updateUserBalance(newBal);
+        updateBalanceUI();
+        
+        spinning = true;
+        spinButton.disabled = true;
+        const randomSector = Math.floor(Math.random() * SECTORS.length);
+        finalSectorIndex = randomSector;
+        
+        // рассчитать финальный угол: нужно чтобы указатель указывал на выбранный сектор
+        const fullTurns = 8 * Math.PI * 2; // несколько полных оборотов
+        const anglePerSector = (Math.PI * 2) / SECTORS.length;
+        const targetRawAngle = (Math.PI * 2) - (finalSectorIndex * anglePerSector) - (anglePerSector/2);
+        let delta = targetRawAngle - (currentAngle % (Math.PI*2));
+        if (delta < 0) delta += Math.PI*2;
+        const finalAngle = currentAngle + fullTurns + delta;
+        const startAngle = currentAngle;
+        const startTime = performance.now();
+        
+        function step(now) {
+            const elapsed = now - startTime;
+            let t = Math.min(1, elapsed / spinDuration);
+            const easeOut = 1 - Math.pow(1-t, 3);
+            const newAngle = startAngle + (finalAngle - startAngle) * easeOut;
+            currentAngle = newAngle;
+            drawWheel(currentAngle);
+            if (t < 1) {
+                animationId = requestAnimationFrame(step);
+            } else {
+                // анимация завершена
+                currentAngle = finalAngle;
+                drawWheel(currentAngle);
+                const wonSector = SECTORS[finalSectorIndex];
+                const winAmount = betAmount * wonSector.multiplier;
+                if (winAmount > 0) {
+                    const newBalWin = getCurrentBalance() + winAmount;
+                    updateUserBalance(newBalWin);
+                    updateBalanceUI();
+                    resultDiv.innerHTML = `🎉 ВЫИГРЫШ! ${wonSector.name}  x${wonSector.multiplier}  +${winAmount} 🎉`;
+                } else {
+                    resultDiv.innerHTML = `😞 Проигрыш... Выпало: ${wonSector.name}`;
+                }
+                spinning = false;
+                spinButton.disabled = false;
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        }
+        if (animationId) cancelAnimationFrame(animationId);
+        animationId = requestAnimationFrame(step);
+        return true;
+    }
+
+    function updateBalanceUI() {
+        const bal = getCurrentBalance();
+        if (balanceSpan) balanceSpan.innerText = bal ?? 0;
+    }
+
+    // Настройка игрового интерфейса
+    function buildGameUI() {
+        const currUser = getCurrentUser();
+        const balance = getCurrentBalance() ?? 0;
+        return `
+            <div class="brand-header">
+                <div class="brand-name">🍯 KOZINAKI 🍯</div>
+                <div class="brand-sub">от создателей koninko.mes</div>
+            </div>
+            <div class="profile-bar">
+                <div class="greeting">🎲 Игрок: ${currUser}</div>
+                <div class="balance-box"><span>💰 БАЛАНС</span> <span id="balanceValue">${balance}</span></div>
+            </div>
+            <div class="roulette-wrapper">
+                <div class="wheel-area">
+                    <canvas id="wheelCanvas" width="500" height="500" style="width:100%; height:auto; max-width:300px; aspect-ratio:1/1"></canvas>
+                </div>
+            </div>
+            <div class="bet-panel">
+                <div class="bet-amounts" id="betButtonsContainer">
+                    <button data-bet="25" class="bet-btn">25 💎</button>
+                    <button data-bet="50" class="bet-btn active">50 💎</button>
+                    <button data-bet="100" class="bet-btn">100 💎</button>
+                    <button data-bet="250" class="bet-btn">250 💎</button>
+                    <button data-bet="500" class="bet-btn">500 💎</button>
+                </div>
+                <button id="spinButton" class="spin-btn">🎡 КРУТИТЬ 🎡</button>
+            </div>
+            <div id="resultMessage" class="result-area">⚡ Сделайте ставку и крутите!</div>
+            <div style="display:flex; justify-content:center;">
+                <button id="logoutBtnGame" class="logout-btn">🚪 Выйти</button>
+            </div>
+            <div class="creator-credit">
+                🎰 Kozinaki Roulette | koninko.mes production
+            </div>
+        `;
+    }
+
+    function attachGameEvents() {
+        canvas = document.getElementById('wheelCanvas');
+        if (canvas) {
+            canvas.width = 500; canvas.height = 500;
+            ctx = canvas.getContext('2d');
+            drawWheel(currentAngle);
+        }
+        spinButton = document.getElementById('spinButton');
+        resultDiv = document.getElementById('resultMessage');
+        balanceSpan = document.getElementById('balanceValue');
+        
+        // кнопки ставок
+        const betCont = document.getElementById('betButtonsContainer');
+        if (betCont) {
+            betCont.querySelectorAll('.bet-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    betCont.querySelectorAll('.bet-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedBet = parseInt(btn.getAttribute('data-bet'), 10);
+                });
+            });
+        }
+        if (spinButton) {
+            spinButton.addEventListener('click', () => {
+                if (!spinning) startSpin(selectedBet);
+                else resultDiv.innerText = '🌀 Кручение уже идет...';
+            });
+        }
+        const logoutBtn = document.getElementById('logoutBtnGame');
+        if (logoutBtn) logoutBtn.addEventListener('click', () => logout());
+        
+        updateBalanceUI();
+    }
+
+    // ----- Рендер главного приложения (авторизация или игра)-----
+    function renderApp() {
+        const appDiv = document.getElementById('dynamic-content');
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
+            // Форма логин/регистр с брендингом
+            appDiv.innerHTML = `
+                <div class="brand-header">
+                    <div class="brand-name">🍯 KOZINAKI 🍯</div>
+                    <div class="brand-sub">от создателей koninko.mes</div>
+                </div>
+                <div style="text-align:center; padding: 10px;">
+                    <div style="background: #071937; border-radius: 40px; padding: 25px 20px; margin-top:20px;">
+                        <input type="text" id="loginUsername" placeholder="Логин" autocomplete="off">
+                        <input type="password" id="loginPassword" placeholder="Пароль">
+                        <div style="margin: 15px 0;">
+                            <button id="doLoginBtn">🔓 Войти</button>
+                            <button id="doRegisterBtn">📝 Регистрация</button>
+                        </div>
+                        <div id="authMessage" style="color:#ffbc6e; font-size:0.9rem;"></div>
+                    </div>
+                </div>
+                <div class="creator-credit">
+                    🎰 Kozinaki Roulette | koninko.mes production
+                </div>
+            `;
+            document.getElementById('doLoginBtn')?.addEventListener('click', () => {
+                const user = document.getElementById('loginUsername').value;
+                const pass = document.getElementById('loginPassword').value;
+                const res = loginUser(user, pass);
+                const msgDiv = document.getElementById('authMessage');
+                if (res.success) {
+                    msgDiv.innerText = 'Успешный вход! Перезагрузка...';
+                    renderApp();
+                } else {
+                    msgDiv.innerText = res.error;
+                }
+            });
+            document.getElementById('doRegisterBtn')?.addEventListener('click', () => {
+                const user = document.getElementById('loginUsername').value;
+                const pass = document.getElementById('loginPassword').value;
+                const res = registerUser(user, pass);
+                const msgDiv = document.getElementById('authMessage');
+                if (res.success) {
+                    msgDiv.innerText = 'Регистрация успешна! Теперь войдите.';
+                } else {
+                    msgDiv.innerText = res.error;
+                }
+            });
+            return;
+        }
+        // Игровой интерфейс
+        appDiv.innerHTML = buildGameUI();
+        attachGameEvents();
+    }
+
+    // Старт приложения
+    renderApp();
+</script>
+</body>
+</html>
