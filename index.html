@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Kozinaki Casino – реальные деньги</title>
+    <title>Kozinaki Casino</title>
     <style>
         * { box-sizing: border-box; user-select: none; }
         body {
@@ -49,7 +49,6 @@
             display: flex;
             gap: 12px;
             align-items: baseline;
-            flex-wrap: wrap;
         }
         .iq {
             background: #2c1a2f;
@@ -142,92 +141,103 @@
             margin-top: 10px;
             cursor: pointer;
         }
-        .negative {
-            color: #ff8888;
-        }
     </style>
 </head>
 <body>
 <div class="game-container" id="app"></div>
 <script>
-    const API_BASE = '/api';
+    // ---------- ХРАНЕНИЕ (localStorage) ----------
+    const STORAGE_USERS = 'casino_users';
+    const STORAGE_CURRENT = 'casino_current_user';
 
-    async function request(endpoint, options = {}) {
-        const res = await fetch(API_BASE + endpoint, {
-            headers: { 'Content-Type': 'application/json' },
-            ...options,
-            body: options.body ? JSON.stringify(options.body) : undefined
-        });
-        return res.json();
+    function getUsers() {
+        const raw = localStorage.getItem(STORAGE_USERS);
+        return raw ? JSON.parse(raw) : {};
+    }
+    function saveUsers(users) {
+        localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+    }
+    function getCurrentUser() {
+        return localStorage.getItem(STORAGE_CURRENT);
+    }
+    function setCurrentUser(username) {
+        username ? localStorage.setItem(STORAGE_CURRENT, username) : localStorage.removeItem(STORAGE_CURRENT);
     }
 
-    function getToken() { return sessionStorage.getItem('token'); }
-    function setToken(token) { sessionStorage.setItem('token', token); }
-    function clearToken() { sessionStorage.removeItem('token'); }
+    function registerUser(username, password) {
+        const users = getUsers();
+        if (users[username]) return { success: false, error: 'Пользователь уже существует' };
+        if (!username.trim() || !password.trim()) return { success: false, error: 'Заполните поля' };
+        users[username] = { password, balance: 1000 };
+        saveUsers(users);
+        return { success: true };
+    }
+    function loginUser(username, password) {
+        const users = getUsers();
+        const user = users[username];
+        if (!user) return { success: false, error: 'Нет пользователя' };
+        if (user.password !== password) return { success: false, error: 'Неверный пароль' };
+        setCurrentUser(username);
+        return { success: true, balance: user.balance };
+    }
+    function logout() {
+        setCurrentUser(null);
+        renderApp();
+    }
 
-    async function loginUser(username, password) {
-        const data = await request('/user', { method: 'POST', body: { username, password, action: 'login' } });
-        if (data.token) {
-            setToken(data.token);
-            return { success: true, balance: data.balance };
+    function getCurrentBalance() {
+        const curr = getCurrentUser();
+        if (!curr) return 0;
+        const users = getUsers();
+        return users[curr]?.balance ?? 0;
+    }
+    function updateUserBalance(newBalance) {
+        const curr = getCurrentUser();
+        if (!curr) return false;
+        const users = getUsers();
+        if (users[curr]) {
+            users[curr].balance = Math.floor(newBalance);
+            saveUsers(users);
+            return true;
         }
-        return { success: false, error: data.error };
+        return false;
     }
 
-    async function registerUser(username, password) {
-        const data = await request('/user', { method: 'POST', body: { username, password, action: 'register' } });
-        if (data.success) return { success: true };
-        return { success: false, error: data.error };
-    }
-
-    async function getBalance() {
-        const token = getToken();
-        if (!token) return null;
-        const data = await request(`/user?token=${token}`);
-        return data.balance;
-    }
-
-    async function updateBalance(newBalance) {
-        const token = getToken();
-        if (!token) return false;
-        const data = await request('/user', { method: 'PUT', body: { token, balance: newBalance } });
-        return data.success;
-    }
-
-    async function createCheckout(amount) {
-        const token = getToken();
-        const data = await request('/create-checkout-session', { method: 'POST', body: { amount, token } });
-        if (data.url) {
-            window.location.href = data.url;
+    // Имитация пополнения (без реальных денег)
+    function showDepositSim() {
+        let amount = prompt('💸 Пополнение баланса (демо-режим)\nВведите сумму:', '100');
+        if (amount && !isNaN(amount) && amount > 0) {
+            const newBal = getCurrentBalance() + Number(amount);
+            updateUserBalance(newBal);
+            refreshBalanceUI();
+            showMessage(`✅ Баланс пополнен на ${amount}. Спасибо за донат! (демо)`, 'win');
         } else {
-            alert('Ошибка создания платежа');
+            alert('Введите корректную сумму');
         }
     }
 
     let currentBalance = 0;
     let balanceSpan, resultDiv;
 
-    async function refreshBalance() {
-        currentBalance = await getBalance();
-        if (balanceSpan) balanceSpan.innerText = currentBalance ?? 0;
-        return currentBalance;
+    function refreshBalanceUI() {
+        currentBalance = getCurrentBalance();
+        if (balanceSpan) balanceSpan.innerText = currentBalance;
     }
 
-    // Генератор случайного отрицательного числа для юмора
     function negativeLuck() {
         return `-${Math.floor(Math.random() * 100)}%`;
     }
 
     async function spinRoulette(bet) {
         if (currentBalance < bet) { showMessage('❌ Не хватает баланса!', 'error'); return; }
-        await updateBalance(currentBalance - bet);
-        await refreshBalance();
+        updateUserBalance(currentBalance - bet);
+        refreshBalanceUI();
         const win = Math.random() < 0.166;
         let winAmount = 0;
         if (win) {
             winAmount = bet * 2;
-            await updateBalance(currentBalance + winAmount);
-            await refreshBalance();
+            updateUserBalance(currentBalance + winAmount);
+            refreshBalanceUI();
             showMessage(`🎉 Рулетка: выигрыш ${winAmount}! Ваш IQ всё ещё -67.`, 'win');
         } else {
             const neg = negativeLuck();
@@ -237,35 +247,35 @@
 
     async function rollDice(bet, predicted) {
         if (currentBalance < bet) return;
-        await updateBalance(currentBalance - bet);
-        await refreshBalance();
+        updateUserBalance(currentBalance - bet);
+        refreshBalanceUI();
         const dice1 = Math.floor(Math.random()*6)+1;
         const dice2 = Math.floor(Math.random()*6)+1;
         const sum = dice1+dice2;
         if (sum == predicted) {
             const win = bet * 3;
-            await updateBalance(currentBalance + win);
-            await refreshBalance();
-            showMessage(`🎲 Кости: ${dice1}+${dice2}=${sum} Вы выиграли ${win}! Ваш IQ: -67 (неизменно)`, 'win');
+            updateUserBalance(currentBalance + win);
+            refreshBalanceUI();
+            showMessage(`🎲 Кости: ${dice1}+${dice2}=${sum} Вы выиграли ${win}! Ваш IQ: -67`, 'win');
         } else {
             const neg = negativeLuck();
-            showMessage(`🎲 Кости: ${dice1}+${dice2}=${sum} Проигрыш. Ваш коэффициент невезения: ${neg}. IQ = -67.`, 'lose');
+            showMessage(`🎲 Кости: ${dice1}+${dice2}=${sum} Проигрыш. Коэффициент невезения: ${neg}.`, 'lose');
         }
     }
 
     async function flipCoin(bet, choice) {
         if (currentBalance < bet) return;
-        await updateBalance(currentBalance - bet);
-        await refreshBalance();
+        updateUserBalance(currentBalance - bet);
+        refreshBalanceUI();
         const result = Math.random() < 0.5 ? 'орел' : 'решка';
         if (result === choice) {
             const win = Math.floor(bet * 1.9);
-            await updateBalance(currentBalance + win);
-            await refreshBalance();
-            showMessage(`🪙 Монетка: ${result} Выигрыш ${win}! Вы умнее, чем кажется (IQ -67).`, 'win');
+            updateUserBalance(currentBalance + win);
+            refreshBalanceUI();
+            showMessage(`🪙 Монетка: ${result} Выигрыш ${win}!`, 'win');
         } else {
             const neg = negativeLuck();
-            showMessage(`🪙 Монетка: ${result} Проигрыш. Уровень IQ временно: -70. Отрицательная энергия: ${neg}.`, 'lose');
+            showMessage(`🪙 Монетка: ${result} Проигрыш. Отрицательная энергия: ${neg}.`, 'lose');
         }
     }
 
@@ -273,10 +283,10 @@
         if (resultDiv) resultDiv.innerHTML = msg;
     }
 
-    async function renderApp() {
+    function renderApp() {
         const appDiv = document.getElementById('app');
-        const token = getToken();
-        if (!token) {
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
             appDiv.innerHTML = `
                 <div class="brand-header">
                     <div class="brand-name">🍯 KOZINAKI CASINO 🍯</div>
@@ -290,22 +300,22 @@
                     <div id="authMsg" style="margin-top:15px; color:#ffbc6e;"></div>
                 </div>
             `;
-            document.getElementById('doLogin').onclick = async () => {
+            document.getElementById('doLogin').onclick = () => {
                 const user = document.getElementById('loginUsername').value;
                 const pass = document.getElementById('loginPassword').value;
-                const res = await loginUser(user, pass);
+                const res = loginUser(user, pass);
                 if (res.success) renderApp();
                 else document.getElementById('authMsg').innerText = res.error;
             };
-            document.getElementById('doRegister').onclick = async () => {
+            document.getElementById('doRegister').onclick = () => {
                 const user = document.getElementById('loginUsername').value;
                 const pass = document.getElementById('loginPassword').value;
-                const res = await registerUser(user, pass);
+                const res = registerUser(user, pass);
                 document.getElementById('authMsg').innerText = res.success ? 'Аккаунт создан! Теперь войдите.' : res.error;
             };
             return;
         }
-        const balance = await refreshBalance();
+        currentBalance = getCurrentBalance();
         appDiv.innerHTML = `
             <div class="brand-header">
                 <div class="brand-name">🍯 KOZINAKI CASINO 🍯</div>
@@ -313,11 +323,11 @@
             </div>
             <div class="profile-bar">
                 <div class="greeting">
-                    <span>🎲 Игрок</span>
+                    <span>🎲 ${currentUser}</span>
                     <span class="iq">🧠 IQ: -67</span>
                 </div>
-                <div class="balance-box">💰 <span id="balanceValue">${balance}</span></div>
-                <button id="depositBtn" class="deposit-btn">💸 Пополнить (реальные деньги)</button>
+                <div class="balance-box">💰 <span id="balanceValue">${currentBalance}</span></div>
+                <button id="depositBtn" class="deposit-btn">💸 Пополнить (демо)</button>
             </div>
             <div class="tabs">
                 <button class="tab-btn active" data-tab="roulette">🎡 Рулетка</button>
@@ -361,7 +371,7 @@
         balanceSpan = document.getElementById('balanceValue');
         resultDiv = document.getElementById('resultMessage');
 
-        // Обработчики вкладок
+        // Вкладки
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.onclick = () => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -375,7 +385,7 @@
             };
         });
 
-        // Рулетка (упрощённая отрисовка)
+        // Рулетка (отрисовка)
         const canvas = document.getElementById('rouletteCanvas');
         let rouletteAngle = 0;
         if (canvas) {
@@ -436,12 +446,9 @@
             if (isNaN(bet) || bet <= 0) return;
             await flipCoin(bet, side);
         };
-        document.getElementById('depositBtn').onclick = () => {
-            let amount = prompt('Сумма пополнения (в долларах США, мин. 1$)', '10');
-            if (amount && !isNaN(amount) && amount >= 1) createCheckout(amount);
-            else alert('Введите сумму от 1');
-        };
-        document.getElementById('logoutBtn').onclick = () => { clearToken(); renderApp(); };
+        document.getElementById('depositBtn').onclick = showDepositSim;
+        document.getElementById('logoutBtn').onclick = () => { logout(); };
+        refreshBalanceUI();
     }
     renderApp();
 </script>
