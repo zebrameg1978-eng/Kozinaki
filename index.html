@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Kozinaki Casino</title>
+    <title>Kozinaki Casino – Слоты и анимации</title>
     <style>
-        * { box-sizing: border-box; user-select: none; }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
         body {
             background: linear-gradient(145deg, #0a0f1e 0%, #0c1222 100%);
             min-height: 100vh;
@@ -16,15 +20,18 @@
             margin: 0;
             padding: 20px;
         }
+
         .game-container {
-            max-width: 650px;
+            max-width: 700px;
             width: 100%;
             background: rgba(15, 25, 45, 0.7);
             backdrop-filter: blur(8px);
             border-radius: 48px;
             padding: 20px;
             border: 1px solid rgba(255,215,0,0.2);
+            transition: all 0.2s;
         }
+
         .brand-header { text-align: center; margin-bottom: 20px; }
         .brand-name {
             font-size: 2.5rem;
@@ -35,6 +42,7 @@
             color: transparent;
         }
         .brand-sub { font-size: 0.8rem; color: #c9ae6e; }
+
         .profile-bar {
             display: flex;
             justify-content: space-between;
@@ -74,13 +82,15 @@
             border: none;
             color: white;
         }
+
         .tabs {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             margin: 20px 0;
             background: #07152b;
             border-radius: 60px;
             padding: 5px;
+            overflow-x: auto;
         }
         .tab-btn {
             flex: 1;
@@ -91,28 +101,35 @@
             font-weight: bold;
             color: #aaa;
             cursor: pointer;
+            white-space: nowrap;
         }
         .tab-btn.active {
             background: #f3b33d;
             color: #1e1a0c;
         }
+
         .game-panel {
             display: none;
             background: #07152b;
             border-radius: 40px;
             padding: 20px;
+            margin-top: 5px;
         }
         .game-panel.active { display: block; }
+
         .play-btn {
             background: radial-gradient(circle at 30% 10%, #ffb347, #ff7e05);
-            padding: 10px 20px;
+            padding: 10px 25px;
             border: none;
             border-radius: 60px;
             color: white;
             font-weight: bold;
             cursor: pointer;
             margin-top: 10px;
+            transition: transform 0.1s;
         }
+        .play-btn:active { transform: scale(0.96); }
+
         .result {
             background: #010713b3;
             border-radius: 30px;
@@ -129,8 +146,14 @@
             border-radius: 60px;
             color: white;
             width: 120px;
+            text-align: center;
         }
-        canvas { max-width: 280px; display: block; margin: 0 auto; cursor: pointer; }
+        canvas {
+            max-width: 280px;
+            display: block;
+            margin: 0 auto;
+            cursor: pointer;
+        }
         .logout-btn {
             background: #3e2a2f;
             width: 100%;
@@ -141,10 +164,44 @@
             margin-top: 10px;
             cursor: pointer;
         }
+
+        /* Слот-машина */
+        .slot-machine {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .reel {
+            width: 80px;
+            height: 100px;
+            background: #010713;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            box-shadow: inset 0 0 0 2px gold, 0 5px 15px black;
+            transition: all 0.1s;
+        }
+        .reel.spinning {
+            animation: spin 0.2s infinite linear;
+        }
+        @keyframes spin {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-10px); }
+        }
+
+        @media (max-width: 500px) {
+            .reel { width: 60px; height: 80px; font-size: 2rem; }
+            .slot-machine { gap: 8px; }
+        }
     </style>
 </head>
 <body>
 <div class="game-container" id="app"></div>
+
 <script>
     // ---------- ХРАНЕНИЕ (localStorage) ----------
     const STORAGE_USERS = 'casino_users';
@@ -203,19 +260,20 @@
         return false;
     }
 
-    // Имитация пополнения (без реальных денег)
-    function showDepositSim() {
+    // Демо-пополнение
+    function showDeposit() {
         let amount = prompt('💸 Пополнение баланса (демо-режим)\nВведите сумму:', '100');
         if (amount && !isNaN(amount) && amount > 0) {
             const newBal = getCurrentBalance() + Number(amount);
             updateUserBalance(newBal);
             refreshBalanceUI();
-            showMessage(`✅ Баланс пополнен на ${amount}. Спасибо за донат! (демо)`, 'win');
+            showMessage(`✅ Баланс пополнен на ${amount}. Спасибо за донат!`, 'win');
         } else {
             alert('Введите корректную сумму');
         }
     }
 
+    // Глобальные переменные
     let currentBalance = 0;
     let balanceSpan, resultDiv;
 
@@ -224,65 +282,212 @@
         if (balanceSpan) balanceSpan.innerText = currentBalance;
     }
 
-    function negativeLuck() {
-        return `-${Math.floor(Math.random() * 100)}%`;
-    }
-
-    async function spinRoulette(bet) {
-        if (currentBalance < bet) { showMessage('❌ Не хватает баланса!', 'error'); return; }
-        updateUserBalance(currentBalance - bet);
-        refreshBalanceUI();
-        const win = Math.random() < 0.166;
-        let winAmount = 0;
-        if (win) {
-            winAmount = bet * 2;
-            updateUserBalance(currentBalance + winAmount);
-            refreshBalanceUI();
-            showMessage(`🎉 Рулетка: выигрыш ${winAmount}! Ваш IQ всё ещё -67.`, 'win');
-        } else {
-            const neg = negativeLuck();
-            showMessage(`😞 Рулетка: проигрыш. Отрицательная удача: ${neg}. IQ упал до -70.`, 'lose');
-        }
-    }
-
-    async function rollDice(bet, predicted) {
-        if (currentBalance < bet) return;
-        updateUserBalance(currentBalance - bet);
-        refreshBalanceUI();
-        const dice1 = Math.floor(Math.random()*6)+1;
-        const dice2 = Math.floor(Math.random()*6)+1;
-        const sum = dice1+dice2;
-        if (sum == predicted) {
-            const win = bet * 3;
-            updateUserBalance(currentBalance + win);
-            refreshBalanceUI();
-            showMessage(`🎲 Кости: ${dice1}+${dice2}=${sum} Вы выиграли ${win}! Ваш IQ: -67`, 'win');
-        } else {
-            const neg = negativeLuck();
-            showMessage(`🎲 Кости: ${dice1}+${dice2}=${sum} Проигрыш. Коэффициент невезения: ${neg}.`, 'lose');
-        }
-    }
-
-    async function flipCoin(bet, choice) {
-        if (currentBalance < bet) return;
-        updateUserBalance(currentBalance - bet);
-        refreshBalanceUI();
-        const result = Math.random() < 0.5 ? 'орел' : 'решка';
-        if (result === choice) {
-            const win = Math.floor(bet * 1.9);
-            updateUserBalance(currentBalance + win);
-            refreshBalanceUI();
-            showMessage(`🪙 Монетка: ${result} Выигрыш ${win}!`, 'win');
-        } else {
-            const neg = negativeLuck();
-            showMessage(`🪙 Монетка: ${result} Проигрыш. Отрицательная энергия: ${neg}.`, 'lose');
-        }
-    }
-
     function showMessage(msg, type) {
         if (resultDiv) resultDiv.innerHTML = msg;
     }
 
+    function negativeLuck() {
+        return `-${Math.floor(Math.random() * 100)}%`;
+    }
+
+    // ---------- РУЛЕТКА С АНИМАЦИЕЙ ----------
+    let rouletteAngle = 0, spinning = false, animId = null;
+    let canvas, ctx;
+
+    function drawRoulette(angle) {
+        if (!canvas || !ctx) return;
+        const w = canvas.width, h = canvas.height;
+        const cx = w/2, cy = h/2;
+        const r = w*0.44;
+        const sectors = ['0','1','2','3','4','5','6','7','8','9','10','11'];
+        const colors = ['#2e7d32','#e33f3f','#2c2c2c','#e33f3f','#2c2c2c','#e33f3f','#2c2c2c','#d4af37','#e33f3f','#2c2c2c','#c97e5a','#2c2c2c'];
+        const step = Math.PI*2/sectors.length;
+        ctx.clearRect(0,0,w,h);
+        for(let i=0;i<sectors.length;i++) {
+            const start = i*step + angle;
+            const end = start+step;
+            ctx.beginPath();
+            ctx.moveTo(cx,cy);
+            ctx.arc(cx,cy,r,start,end);
+            ctx.fillStyle = colors[i];
+            ctx.fill();
+            ctx.strokeStyle='white';
+            ctx.stroke();
+            ctx.save();
+            ctx.translate(cx,cy);
+            ctx.rotate(start+step/2);
+            ctx.fillStyle='white';
+            ctx.font=`bold ${r*0.12}px Arial`;
+            ctx.fillText(sectors[i], r*0.7,6);
+            ctx.restore();
+        }
+        ctx.beginPath();
+        ctx.moveTo(cx-10, cy-r-8);
+        ctx.lineTo(cx, cy-r-22);
+        ctx.lineTo(cx+10, cy-r-8);
+        ctx.fillStyle='#FFD966';
+        ctx.fill();
+    }
+
+    async function spinRoulette(bet) {
+        if (spinning) return;
+        if (currentBalance < bet) { showMessage('❌ Не хватает баланса!', 'error'); return; }
+        updateUserBalance(currentBalance - bet);
+        refreshBalanceUI();
+
+        spinning = true;
+        const randomSector = Math.floor(Math.random() * 12);
+        const win = (randomSector === 7 || randomSector === 10); // только 7 или 10 выигрышные
+        let winAmount = 0;
+        if (win) winAmount = bet * 2;
+
+        // Анимация вращения
+        const fullTurns = 10 * Math.PI * 2;
+        const stepAngle = (Math.PI * 2) / 12;
+        const targetRaw = (Math.PI * 2) - (randomSector * stepAngle) - (stepAngle/2);
+        let delta = targetRaw - (rouletteAngle % (Math.PI*2));
+        if (delta < 0) delta += Math.PI*2;
+        const finalAngle = rouletteAngle + fullTurns + delta;
+        const startAngle = rouletteAngle;
+        const startTime = performance.now();
+        const duration = 1500;
+
+        function animate(now) {
+            const elapsed = now - startTime;
+            let t = Math.min(1, elapsed / duration);
+            const ease = 1 - Math.pow(1-t, 3);
+            rouletteAngle = startAngle + (finalAngle - startAngle) * ease;
+            drawRoulette(rouletteAngle);
+            if (t < 1) {
+                animId = requestAnimationFrame(animate);
+            } else {
+                rouletteAngle = finalAngle;
+                drawRoulette(rouletteAngle);
+                if (win) {
+                    updateUserBalance(currentBalance + winAmount);
+                    refreshBalanceUI();
+                    showMessage(`🎉 Рулетка: выпало ${randomSector}! Выигрыш ${winAmount}! IQ -67`, 'win');
+                } else {
+                    showMessage(`😞 Рулетка: выпало ${randomSector}. Проигрыш. Отрицательная удача: ${negativeLuck()}`, 'lose');
+                }
+                spinning = false;
+                cancelAnimationFrame(animId);
+                animId = null;
+            }
+        }
+        if (animId) cancelAnimationFrame(animId);
+        animId = requestAnimationFrame(animate);
+    }
+
+    // ---------- КОСТИ С АНИМАЦИЕЙ ----------
+    async function rollDiceWithAnim(bet, predicted) {
+        if (currentBalance < bet) return;
+        updateUserBalance(currentBalance - bet);
+        refreshBalanceUI();
+        showMessage('🎲 Бросаем кости...', 'info');
+        // анимация смены чисел
+        let dice1 = 1, dice2 = 1;
+        const interval = setInterval(() => {
+            dice1 = Math.floor(Math.random()*6)+1;
+            dice2 = Math.floor(Math.random()*6)+1;
+            document.getElementById('diceResult').innerHTML = `🎲 ${dice1}  |  🎲 ${dice2}`;
+        }, 100);
+        setTimeout(async () => {
+            clearInterval(interval);
+            const final1 = Math.floor(Math.random()*6)+1;
+            const final2 = Math.floor(Math.random()*6)+1;
+            const sum = final1+final2;
+            document.getElementById('diceResult').innerHTML = `🎲 ${final1}  |  🎲 ${final2}  =  ${sum}`;
+            if (sum == predicted) {
+                const win = bet * 3;
+                updateUserBalance(currentBalance + win);
+                refreshBalanceUI();
+                showMessage(`🎉 Кости: ${final1}+${final2}=${sum} Вы выиграли ${win}! IQ -67`, 'win');
+            } else {
+                showMessage(`😞 Кости: ${final1}+${final2}=${sum} Проигрыш. ${negativeLuck()}`, 'lose');
+            }
+        }, 800);
+    }
+
+    // ---------- МОНЕТКА С АНИМАЦИЕЙ ----------
+    async function flipCoinAnim(bet, choice) {
+        if (currentBalance < bet) return;
+        updateUserBalance(currentBalance - bet);
+        refreshBalanceUI();
+        let flips = 0;
+        const coinEl = document.getElementById('coinResult');
+        const interval = setInterval(() => {
+            const r = Math.random() < 0.5 ? 'орел' : 'решка';
+            coinEl.innerHTML = `🪙 ${r}`;
+            flips++;
+            if (flips > 10) clearInterval(interval);
+        }, 100);
+        setTimeout(async () => {
+            const result = Math.random() < 0.5 ? 'орел' : 'решка';
+            coinEl.innerHTML = `🪙 ${result}`;
+            if (result === choice) {
+                const win = Math.floor(bet * 1.9);
+                updateUserBalance(currentBalance + win);
+                refreshBalanceUI();
+                showMessage(`🪙 Монетка: ${result} Выигрыш ${win}!`, 'win');
+            } else {
+                showMessage(`🪙 Монетка: ${result} Проигрыш. Отрицательная энергия: ${negativeLuck()}`, 'lose');
+            }
+        }, 800);
+    }
+
+    // ---------- СЛОТ-МАШИНА ----------
+    const slotSymbols = ['🍒', '🍋', '🍊', '🔔', '💎', '7️⃣'];
+    let slotSpinning = false;
+    let slotInterval = null;
+
+    async function spinSlot(bet) {
+        if (slotSpinning) return;
+        if (currentBalance < bet) { showMessage('❌ Не хватает баланса!', 'error'); return; }
+        updateUserBalance(currentBalance - bet);
+        refreshBalanceUI();
+        slotSpinning = true;
+        const reels = document.querySelectorAll('.reel');
+        reels.forEach(r => r.classList.add('spinning'));
+        let spinCount = 0;
+        slotInterval = setInterval(() => {
+            reels.forEach(reel => {
+                const randSym = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                reel.innerText = randSym;
+            });
+            spinCount++;
+            if (spinCount > 15) {
+                clearInterval(slotInterval);
+                // финальные символы
+                const finalSymbols = [];
+                for (let i=0; i<3; i++) {
+                    const sym = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                    finalSymbols.push(sym);
+                    reels[i].innerText = sym;
+                    reels[i].classList.remove('spinning');
+                }
+                // проверка выигрыша
+                let winAmount = 0;
+                if (finalSymbols[0] === finalSymbols[1] && finalSymbols[1] === finalSymbols[2]) {
+                    if (finalSymbols[0] === '7️⃣') winAmount = bet * 10;
+                    else if (finalSymbols[0] === '💎') winAmount = bet * 7;
+                    else winAmount = bet * 5;
+                } else if (finalSymbols[0] === finalSymbols[1] || finalSymbols[1] === finalSymbols[2] || finalSymbols[0] === finalSymbols[2]) {
+                    winAmount = bet * 2;
+                }
+                if (winAmount > 0) {
+                    updateUserBalance(currentBalance + winAmount);
+                    refreshBalanceUI();
+                    showMessage(`🎰 Слот: ${finalSymbols.join(' ')} Выигрыш ${winAmount}!`, 'win');
+                } else {
+                    showMessage(`🎰 Слот: ${finalSymbols.join(' ')} Проигрыш. ${negativeLuck()}`, 'lose');
+                }
+                slotSpinning = false;
+            }
+        }, 100);
+    }
+
+    // ---------- ОТРИСОВКА ИНТЕРФЕЙСА ----------
     function renderApp() {
         const appDiv = document.getElementById('app');
         const currentUser = getCurrentUser();
@@ -333,7 +538,9 @@
                 <button class="tab-btn active" data-tab="roulette">🎡 Рулетка</button>
                 <button class="tab-btn" data-tab="dice">🎲 Кости</button>
                 <button class="tab-btn" data-tab="coin">🪙 Монетка</button>
+                <button class="tab-btn" data-tab="slot">🎰 Слоты</button>
             </div>
+            <!-- Рулетка -->
             <div id="roulettePanel" class="game-panel active">
                 <canvas id="rouletteCanvas" width="500" height="500" style="width:100%; max-width:280px; margin:0 auto; display:block;"></canvas>
                 <div style="margin-top:15px; text-align:center;">
@@ -341,9 +548,10 @@
                     <button id="spinRouletteBtn" class="play-btn">Крутить</button>
                 </div>
             </div>
+            <!-- Кости -->
             <div id="dicePanel" class="game-panel">
-                <div style="text-align:center; font-size:2rem;">🎲🎲</div>
-                <div style="margin-top:15px; text-align:center;">
+                <div id="diceResult" style="text-align:center; font-size:2rem; margin:20px;">🎲 🎲</div>
+                <div style="text-align:center;">
                     <input type="number" id="diceBet" value="10" step="5" min="1"> 💎
                     <select id="diceSum">
                         <option value="2">2</option><option value="3">3</option><option value="4">4</option>
@@ -354,9 +562,10 @@
                     <button id="rollDiceBtn" class="play-btn">Бросить</button>
                 </div>
             </div>
+            <!-- Монетка -->
             <div id="coinPanel" class="game-panel">
-                <div style="text-align:center; font-size:2rem;">🪙</div>
-                <div style="margin-top:15px; text-align:center;">
+                <div id="coinResult" style="text-align:center; font-size:2rem; margin:20px;">🪙</div>
+                <div style="text-align:center;">
                     <input type="number" id="coinBet" value="10" step="5" min="1"> 💎
                     <select id="coinSide">
                         <option value="орел">Орел</option>
@@ -365,11 +574,33 @@
                     <button id="flipCoinBtn" class="play-btn">Подбросить</button>
                 </div>
             </div>
+            <!-- Слот-машина -->
+            <div id="slotPanel" class="game-panel">
+                <div class="slot-machine">
+                    <div class="reel">🍒</div>
+                    <div class="reel">🍒</div>
+                    <div class="reel">🍒</div>
+                </div>
+                <div style="text-align:center;">
+                    <input type="number" id="slotBet" value="10" step="5" min="1"> 💎
+                    <button id="spinSlotBtn" class="play-btn">Крутить слот</button>
+                </div>
+            </div>
             <div id="resultMessage" class="result">Сделайте ставку. Ваш IQ: -67</div>
             <button id="logoutBtn" class="logout-btn">Выйти</button>
         `;
+
         balanceSpan = document.getElementById('balanceValue');
         resultDiv = document.getElementById('resultMessage');
+        refreshBalanceUI();
+
+        // Инициализация рулетки
+        canvas = document.getElementById('rouletteCanvas');
+        if (canvas) {
+            canvas.width = 500; canvas.height = 500;
+            ctx = canvas.getContext('2d');
+            drawRoulette(rouletteAngle);
+        }
 
         // Вкладки
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -381,75 +612,33 @@
                 if (tab === 'roulette') document.getElementById('roulettePanel').classList.add('active');
                 if (tab === 'dice') document.getElementById('dicePanel').classList.add('active');
                 if (tab === 'coin') document.getElementById('coinPanel').classList.add('active');
-                if (tab === 'roulette' && window.rouletteCtx) drawRoulette();
+                if (tab === 'slot') document.getElementById('slotPanel').classList.add('active');
             };
         });
 
-        // Рулетка (отрисовка)
-        const canvas = document.getElementById('rouletteCanvas');
-        let rouletteAngle = 0;
-        if (canvas) {
-            canvas.width = 500; canvas.height = 500;
-            const ctx = canvas.getContext('2d');
-            window.rouletteCtx = ctx;
-            const sectors = ['0','1','2','3','4','5','6','7','8','9','10','11'];
-            const colors = ['#2e7d32','#e33f3f','#2c2c2c','#e33f3f','#2c2c2c','#e33f3f','#2c2c2c','#d4af37','#e33f3f','#2c2c2c','#c97e5a','#2c2c2c'];
-            function drawRoulette() {
-                const w = canvas.width, h = canvas.height;
-                const cx = w/2, cy = h/2;
-                const r = w*0.44;
-                const step = Math.PI*2/sectors.length;
-                ctx.clearRect(0,0,w,h);
-                for(let i=0;i<sectors.length;i++) {
-                    const start = i*step + rouletteAngle;
-                    const end = start+step;
-                    ctx.beginPath();
-                    ctx.moveTo(cx,cy);
-                    ctx.arc(cx,cy,r,start,end);
-                    ctx.fillStyle = colors[i];
-                    ctx.fill();
-                    ctx.strokeStyle='white';
-                    ctx.stroke();
-                    ctx.save();
-                    ctx.translate(cx,cy);
-                    ctx.rotate(start+step/2);
-                    ctx.fillStyle='white';
-                    ctx.font=`bold ${r*0.12}px Arial`;
-                    ctx.fillText(sectors[i], r*0.7,6);
-                    ctx.restore();
-                }
-                ctx.beginPath();
-                ctx.moveTo(cx-10, cy-r-8);
-                ctx.lineTo(cx, cy-r-22);
-                ctx.lineTo(cx+10, cy-r-8);
-                ctx.fillStyle='#FFD966';
-                ctx.fill();
-            }
-            drawRoulette();
-            window.drawRoulette = drawRoulette;
-        }
-
-        document.getElementById('spinRouletteBtn').onclick = async () => {
+        // Обработчики
+        document.getElementById('spinRouletteBtn').onclick = () => {
             const bet = parseInt(document.getElementById('rouletteBet').value);
-            if (isNaN(bet) || bet <= 0) return;
-            await spinRoulette(bet);
+            if (!isNaN(bet) && bet > 0) spinRoulette(bet);
         };
-        document.getElementById('rollDiceBtn').onclick = async () => {
+        document.getElementById('rollDiceBtn').onclick = () => {
             const bet = parseInt(document.getElementById('diceBet').value);
-            const sum = document.getElementById('diceSum').value;
-            if (isNaN(bet) || bet <= 0) return;
-            await rollDice(bet, parseInt(sum));
+            const sum = parseInt(document.getElementById('diceSum').value);
+            if (!isNaN(bet) && bet > 0) rollDiceWithAnim(bet, sum);
         };
-        document.getElementById('flipCoinBtn').onclick = async () => {
+        document.getElementById('flipCoinBtn').onclick = () => {
             const bet = parseInt(document.getElementById('coinBet').value);
             const side = document.getElementById('coinSide').value;
-            if (isNaN(bet) || bet <= 0) return;
-            await flipCoin(bet, side);
+            if (!isNaN(bet) && bet > 0) flipCoinAnim(bet, side);
         };
-        document.getElementById('depositBtn').onclick = showDepositSim;
-        document.getElementById('logoutBtn').onclick = () => { logout(); };
-        refreshBalanceUI();
+        document.getElementById('spinSlotBtn').onclick = () => {
+            const bet = parseInt(document.getElementById('slotBet').value);
+            if (!isNaN(bet) && bet > 0) spinSlot(bet);
+        };
+        document.getElementById('depositBtn').onclick = showDeposit;
+        document.getElementById('logoutBtn').onclick = () => logout();
     }
+
     renderApp();
 </script>
 </body>
